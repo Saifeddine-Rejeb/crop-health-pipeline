@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+!exemple.env
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Project runtime data (generated)
+airflow/logs/
+airflow/plugins/__pycache__/
+docker-data/
+
+# Local data outputs
+data/*.parquet
+data/*.jsonl
+data/meta.json
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Build/package artifacts
+build/
+dist/
+*.egg-info/
