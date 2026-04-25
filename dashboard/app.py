@@ -25,12 +25,13 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-DATA_DIR    = os.getenv("DATA_DIR", "data")
+DATA_DIR = os.getenv("DATA_DIR", "data")
 ALERTS_FILE = os.path.join(DATA_DIR, "alerts.jsonl")
-PROC_FILE   = os.path.join(DATA_DIR, "dashboard_latest.parquet")
-META_FILE   = os.path.join(DATA_DIR, "meta.json")
+PROC_FILE = os.path.join(DATA_DIR, "dashboard_latest.parquet")
+META_FILE = os.path.join(DATA_DIR, "meta.json")
 
 # ─── Load helpers ─────────────────────────────────────────────────────────────
+
 
 @st.cache_data(ttl=300)
 def load_processed() -> pd.DataFrame:
@@ -49,8 +50,7 @@ def load_dashboard_df(df_raw: pd.DataFrame) -> pd.DataFrame:
     if df_raw.empty:
         return df_raw
     return (
-        df_raw
-        .groupby(["datetime", "aoi_bbox"], as_index=False)
+        df_raw.groupby(["datetime", "aoi_bbox"], as_index=False)
         .agg(
             ndvi=("ndvi", "mean"),
             rolling_mean_ndvi=("rolling_mean_ndvi", "mean"),
@@ -88,21 +88,40 @@ def _demo_data() -> pd.DataFrame:
     dates = pd.date_range("2024-03-01", periods=90, freq="D")
     rows = []
     for aoi in ["AOI-1", "AOI-2"]:
-        ndvi = 0.55 + 0.1 * np.sin(np.linspace(0, 3.14, 90)) + np.random.normal(0, 0.02, 90)
+        ndvi = (
+            0.55
+            + 0.1 * np.sin(np.linspace(0, 3.14, 90))
+            + np.random.normal(0, 0.02, 90)
+        )
         ndvi[70:75] *= 0.6
         for i, d in enumerate(dates):
-            rows.append({
-                "datetime":          d,
-                "ndvi":              float(ndvi[i]),
-                "rolling_mean_ndvi": float(pd.Series(ndvi[:i+1]).rolling(30, min_periods=1).mean().iloc[-1]),
-                "ndvi_drop_pct":     max(0, float((ndvi[:i+1].mean() - ndvi[i]) / max(ndvi[:i+1].mean(), 0.001))),
-                "is_anomaly":        bool(ndvi[i] < 0.38),
-                "avg_temp_c":        float(25 + 5 * np.sin(i / 30) + np.random.normal(0, 1)),
-                "total_precip_mm":   float(max(0, np.random.normal(2, 3))),
-                "aoi_bbox":          aoi,
-                "scene_id":          f"S2_{aoi}_{d.strftime('%Y%m%d')}",
-                "cloud_cover":       float(np.random.uniform(0, 25)),
-            })
+            rows.append(
+                {
+                    "datetime": d,
+                    "ndvi": float(ndvi[i]),
+                    "rolling_mean_ndvi": float(
+                        pd.Series(ndvi[: i + 1])
+                        .rolling(30, min_periods=1)
+                        .mean()
+                        .iloc[-1]
+                    ),
+                    "ndvi_drop_pct": max(
+                        0,
+                        float(
+                            (ndvi[: i + 1].mean() - ndvi[i])
+                            / max(ndvi[: i + 1].mean(), 0.001)
+                        ),
+                    ),
+                    "is_anomaly": bool(ndvi[i] < 0.38),
+                    "avg_temp_c": float(
+                        25 + 5 * np.sin(i / 30) + np.random.normal(0, 1)
+                    ),
+                    "total_precip_mm": float(max(0, np.random.normal(2, 3))),
+                    "aoi_bbox": aoi,
+                    "scene_id": f"S2_{aoi}_{d.strftime('%Y%m%d')}",
+                    "cloud_cover": float(np.random.uniform(0, 25)),
+                }
+            )
     return pd.DataFrame(rows)
 
 
@@ -142,8 +161,8 @@ with st.sidebar:
         # Apply date filter only when both dates are selected
         if isinstance(date_range, (list, tuple)) and len(date_range) == 2:
             df_all = df_all[
-                (df_all["datetime"].dt.date >= date_range[0]) &
-                (df_all["datetime"].dt.date <= date_range[1])
+                (df_all["datetime"].dt.date >= date_range[0])
+                & (df_all["datetime"].dt.date <= date_range[1])
             ]
 
     st.divider()
@@ -161,7 +180,9 @@ if selected_aoi != "All" and "aoi_bbox" in df.columns:
 # ─── Header ───────────────────────────────────────────────────────────────────
 
 st.title("🛰️ Crop Health Monitoring Dashboard")
-st.caption(f"Sentinel-2 NDVI analysis · Updated {meta.get('last_updated', 'N/A')[:16]} UTC")
+st.caption(
+    f"Sentinel-2 NDVI analysis · Updated {meta.get('last_updated', 'N/A')[:16]} UTC"
+)
 st.divider()
 
 # ─── KPI row ─────────────────────────────────────────────────────────────────
@@ -169,29 +190,36 @@ st.divider()
 c1, c2, c3, c4 = st.columns(4)
 
 if not df.empty:
-    latest_ndvi   = df["ndvi"].dropna().iloc[-1] if "ndvi" in df.columns else 0
-    mean_ndvi     = df["ndvi"].mean() if "ndvi" in df.columns else 0
+    latest_ndvi = df["ndvi"].dropna().iloc[-1] if "ndvi" in df.columns else 0
+    mean_ndvi = df["ndvi"].mean() if "ndvi" in df.columns else 0
     anomaly_count = int(df["is_anomaly"].sum()) if "is_anomaly" in df.columns else 0
-    scene_count   = len(df)
+    scene_count = len(df)
 else:
     latest_ndvi = mean_ndvi = 0
     anomaly_count = scene_count = 0
 
-c1.metric("Latest NDVI",     f"{latest_ndvi:.3f}", help="Most recent pixel NDVI")
-c2.metric("Mean NDVI",       f"{mean_ndvi:.3f}",   help="Average NDVI across period")
-c3.metric("🚨 Anomalies",    anomaly_count,         delta=f"{'⚠️ Stress detected' if anomaly_count > 0 else '✅ Normal'}", delta_color="inverse")
+c1.metric("Latest NDVI", f"{latest_ndvi:.3f}", help="Most recent pixel NDVI")
+c2.metric("Mean NDVI", f"{mean_ndvi:.3f}", help="Average NDVI across period")
+c3.metric(
+    "🚨 Anomalies",
+    anomaly_count,
+    delta=f"{'⚠️ Stress detected' if anomaly_count > 0 else '✅ Normal'}",
+    delta_color="inverse",
+)
 c4.metric("Scenes ingested", scene_count)
 
 st.divider()
 
 # ─── Tab layout ──────────────────────────────────────────────────────────────
 
-tab1, tab2, tab3, tab4 = st.tabs([
-    "📈 NDVI Trend",
-    "🌤️ Weather Enrichment",
-    "🚨 Anomaly Alerts",
-    "🗺️ Spatial View",
-])
+tab1, tab2, tab3, tab4 = st.tabs(
+    [
+        "📈 NDVI Trend",
+        "🌤️ Weather Enrichment",
+        "🚨 Anomaly Alerts",
+        "🗺️ Spatial View",
+    ]
+)
 
 # ── Tab 1: NDVI Trend ─────────────────────────────────────────────────────────
 with tab1:
@@ -199,29 +227,42 @@ with tab1:
 
     if not df.empty and "ndvi" in df.columns and "datetime" in df.columns:
         fig = go.Figure()
-        fig.add_trace(go.Scatter(
-            x=df["datetime"], y=df["ndvi"],
-            mode="lines+markers",
-            name="NDVI",
-            line=dict(color="#4ade80", width=2),
-            marker=dict(
-                color=df["is_anomaly"].map({True: "red", False: "#4ade80"}) if "is_anomaly" in df.columns else "#4ade80",
-                size=6,
-            ),
-        ))
+        fig.add_trace(
+            go.Scatter(
+                x=df["datetime"],
+                y=df["ndvi"],
+                mode="lines+markers",
+                name="NDVI",
+                line=dict(color="#4ade80", width=2),
+                marker=dict(
+                    color=(
+                        df["is_anomaly"].map({True: "red", False: "#4ade80"})
+                        if "is_anomaly" in df.columns
+                        else "#4ade80"
+                    ),
+                    size=6,
+                ),
+            )
+        )
         if "rolling_mean_ndvi" in df.columns:
-            fig.add_trace(go.Scatter(
-                x=df["datetime"], y=df["rolling_mean_ndvi"],
-                mode="lines",
-                name="30-day rolling mean",
-                line=dict(color="orange", width=2, dash="dash"),
-            ))
+            fig.add_trace(
+                go.Scatter(
+                    x=df["datetime"],
+                    y=df["rolling_mean_ndvi"],
+                    mode="lines",
+                    name="30-day rolling mean",
+                    line=dict(color="orange", width=2, dash="dash"),
+                )
+            )
         if "is_anomaly" in df.columns:
             anomalies = df[df["is_anomaly"] == True]
             for _, row in anomalies.iterrows():
                 fig.add_vrect(
-                    x0=row["datetime"], x1=row["datetime"],
-                    fillcolor="red", opacity=0.15, line_width=0,
+                    x0=row["datetime"],
+                    x1=row["datetime"],
+                    fillcolor="red",
+                    opacity=0.15,
+                    line_width=0,
                 )
         fig.update_layout(
             height=400,
@@ -237,9 +278,13 @@ with tab1:
 
     if not df.empty and "ndvi" in df.columns:
         st.subheader("NDVI Distribution")
-        fig2 = px.histogram(df.dropna(subset=["ndvi"]), x="ndvi", nbins=40,
-                            color_discrete_sequence=["#4ade80"],
-                            template="plotly_dark")
+        fig2 = px.histogram(
+            df.dropna(subset=["ndvi"]),
+            x="ndvi",
+            nbins=40,
+            color_discrete_sequence=["#4ade80"],
+            template="plotly_dark",
+        )
         fig2.update_layout(height=250, margin=dict(l=0, r=0, t=10, b=0))
         st.plotly_chart(fig2, use_container_width=True)
 
@@ -251,21 +296,27 @@ with tab2:
     if not df.empty and "avg_temp_c" in df.columns:
         col_a, col_b = st.columns(2)
         with col_a:
-            fig_t = px.line(df.dropna(subset=["avg_temp_c"]),
-                            x="datetime", y="avg_temp_c",
-                            title="Daily Avg Temperature (°C)",
-                            template="plotly_dark",
-                            color_discrete_sequence=["#fb923c"])
+            fig_t = px.line(
+                df.dropna(subset=["avg_temp_c"]),
+                x="datetime",
+                y="avg_temp_c",
+                title="Daily Avg Temperature (°C)",
+                template="plotly_dark",
+                color_discrete_sequence=["#fb923c"],
+            )
             fig_t.update_layout(height=280, margin=dict(l=0, r=0, t=40, b=0))
             st.plotly_chart(fig_t, use_container_width=True)
 
         with col_b:
             if "total_precip_mm" in df.columns:
-                fig_p = px.bar(df.dropna(subset=["total_precip_mm"]),
-                               x="datetime", y="total_precip_mm",
-                               title="Daily Precipitation (mm)",
-                               template="plotly_dark",
-                               color_discrete_sequence=["#60a5fa"])
+                fig_p = px.bar(
+                    df.dropna(subset=["total_precip_mm"]),
+                    x="datetime",
+                    y="total_precip_mm",
+                    title="Daily Precipitation (mm)",
+                    template="plotly_dark",
+                    color_discrete_sequence=["#60a5fa"],
+                )
                 fig_p.update_layout(height=280, margin=dict(l=0, r=0, t=40, b=0))
                 st.plotly_chart(fig_p, use_container_width=True)
 
@@ -274,7 +325,8 @@ with tab2:
             scatter_df = df.dropna(subset=["ndvi", "avg_temp_c"])
             fig_s = px.scatter(
                 scatter_df,
-                x="avg_temp_c", y="ndvi",
+                x="avg_temp_c",
+                y="ndvi",
                 color="is_anomaly" if "is_anomaly" in scatter_df.columns else None,
                 color_discrete_map={True: "red", False: "#4ade80"},
                 template="plotly_dark",
@@ -286,12 +338,15 @@ with tab2:
                 z = np.polyfit(x, y, 1)
                 p = np.poly1d(z)
                 x_line = np.linspace(x.min(), x.max(), 100)
-                fig_s.add_trace(go.Scatter(
-                    x=x_line, y=p(x_line),
-                    mode="lines",
-                    name="Trend",
-                    line=dict(color="orange", width=2, dash="dash"),
-                ))
+                fig_s.add_trace(
+                    go.Scatter(
+                        x=x_line,
+                        y=p(x_line),
+                        mode="lines",
+                        name="Trend",
+                        line=dict(color="orange", width=2, dash="dash"),
+                    )
+                )
             fig_s.update_layout(height=300, margin=dict(l=0, r=0, t=10, b=0))
             st.plotly_chart(fig_s, use_container_width=True)
     else:
@@ -305,25 +360,46 @@ with tab3:
     alerts_df = load_alerts()
 
     if not alerts_df.empty:
-        st.success(f"**{len(alerts_df)} alerts** received from Kafka topic `crop-alerts`")
+        st.success(
+            f"**{len(alerts_df)} alerts** received from Kafka topic `crop-alerts`"
+        )
 
-        display_cols = [c for c in ["consumed_at", "scene_date", "lat", "lon",
-                                     "ndvi", "ndvi_drop_pct", "aoi"] if c in alerts_df.columns]
+        display_cols = [
+            c
+            for c in [
+                "consumed_at",
+                "scene_date",
+                "lat",
+                "lon",
+                "ndvi",
+                "ndvi_drop_pct",
+                "aoi",
+            ]
+            if c in alerts_df.columns
+        ]
         st.dataframe(
-            alerts_df[display_cols].sort_values("consumed_at", ascending=False)
-            if "consumed_at" in alerts_df.columns else alerts_df[display_cols],
+            (
+                alerts_df[display_cols].sort_values("consumed_at", ascending=False)
+                if "consumed_at" in alerts_df.columns
+                else alerts_df[display_cols]
+            ),
             use_container_width=True,
             height=400,
         )
 
         if "ndvi_drop_pct" in alerts_df.columns:
-            fig_a = px.histogram(alerts_df, x="ndvi_drop_pct",
-                                  title="Distribution of NDVI Drop %",
-                                  color_discrete_sequence=["red"],
-                                  template="plotly_dark")
+            fig_a = px.histogram(
+                alerts_df,
+                x="ndvi_drop_pct",
+                title="Distribution of NDVI Drop %",
+                color_discrete_sequence=["red"],
+                template="plotly_dark",
+            )
             st.plotly_chart(fig_a, use_container_width=True)
     else:
-        st.info("No alerts yet. Alerts appear here after the pipeline runs and publishes to Kafka.")
+        st.info(
+            "No alerts yet. Alerts appear here after the pipeline runs and publishes to Kafka."
+        )
 
     if st.button("🔄 Refresh alerts"):
         st.cache_data.clear()
@@ -339,12 +415,18 @@ with tab4:
     if selected_aoi != "All" and "aoi_bbox" in map_source.columns:
         map_source = map_source[map_source["aoi_bbox"] == selected_aoi]
 
-    if not map_source.empty and "ndvi" in map_source.columns and "lat" in map_source.columns and "lon" in map_source.columns:
+    if (
+        not map_source.empty
+        and "ndvi" in map_source.columns
+        and "lat" in map_source.columns
+        and "lon" in map_source.columns
+    ):
         map_df = map_source.dropna(subset=["lat", "lon", "ndvi"])
         if not map_df.empty:
             fig_map = px.scatter_mapbox(
                 map_df,
-                lat="lat", lon="lon",
+                lat="lat",
+                lon="lon",
                 color="ndvi",
                 color_continuous_scale="RdYlGn",
                 range_color=[0, 0.8],
@@ -352,7 +434,11 @@ with tab4:
                 zoom=7,
                 mapbox_style="carto-darkmatter",
                 title="NDVI by Location",
-                hover_data=["scene_id", "ndvi", "is_anomaly"] if "scene_id" in map_df.columns else ["ndvi"],
+                hover_data=(
+                    ["scene_id", "ndvi", "is_anomaly"]
+                    if "scene_id" in map_df.columns
+                    else ["ndvi"]
+                ),
             )
             fig_map.update_layout(height=500, margin=dict(l=0, r=0, t=40, b=0))
             st.plotly_chart(fig_map, use_container_width=True)
@@ -363,4 +449,6 @@ with tab4:
 
 # ─── Footer ───────────────────────────────────────────────────────────────────
 st.divider()
-st.caption("Pipeline: Sentinel-2 STAC API + Open-Meteo → PySpark (Databricks) → Delta Lake → Airflow → Kafka → Streamlit")
+st.caption(
+    "Pipeline: Sentinel-2 STAC API + Open-Meteo → PySpark (Databricks) → Delta Lake → Airflow → Kafka → Streamlit"
+)

@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 # ─── T1: NDVI Calculation ────────────────────────────────────────────────────
 
+
 def compute_ndvi(df: DataFrame) -> DataFrame:
     """
     T1 – Compute NDVI per pixel per scene date.
@@ -40,6 +41,7 @@ def compute_ndvi(df: DataFrame) -> DataFrame:
 
     Edge case: returns None when nir + red == 0 (avoids division by zero).
     """
+
     @F.udf(FloatType())
     def _ndvi(nir, red):
         if nir is None or red is None:
@@ -54,11 +56,11 @@ def compute_ndvi(df: DataFrame) -> DataFrame:
     # Classify NDVI into human-readable categories
     df = df.withColumn(
         "ndvi_class",
-        F.when(F.col("ndvi") < 0.0,  "Water/Non-Vegetated")
-         .when(F.col("ndvi") < 0.2,  "Sparse Vegetation")
-         .when(F.col("ndvi") < 0.4,  "Moderate Vegetation")
-         .when(F.col("ndvi") < 0.6,  "Dense Vegetation")
-         .otherwise("Very Dense Vegetation"),
+        F.when(F.col("ndvi") < 0.0, "Water/Non-Vegetated")
+        .when(F.col("ndvi") < 0.2, "Sparse Vegetation")
+        .when(F.col("ndvi") < 0.4, "Moderate Vegetation")
+        .when(F.col("ndvi") < 0.6, "Dense Vegetation")
+        .otherwise("Very Dense Vegetation"),
     )
 
     logger.info("T1 NDVI computed. Schema: %s", df.columns)
@@ -66,6 +68,7 @@ def compute_ndvi(df: DataFrame) -> DataFrame:
 
 
 # ─── T2: Weather Enrichment ───────────────────────────────────────────────────
+
 
 def enrich_with_weather(
     satellite_df: DataFrame,
@@ -82,8 +85,7 @@ def enrich_with_weather(
     """
     # Aggregate hourly → daily
     daily_weather = (
-        weather_df
-        .withColumn("date", F.to_date("datetime"))
+        weather_df.withColumn("date", F.to_date("datetime"))
         .groupBy("date", "lat", "lon", "location_name")
         .agg(
             F.avg("temperature_2m").alias("avg_temp_c"),
@@ -94,21 +96,22 @@ def enrich_with_weather(
     )
 
     # Join on date — satellite scene_date must be date type
-    enriched = satellite_df.withColumn(
-        "scene_date_dt", F.to_date("scene_date")
-    ).join(
-        daily_weather,
-        on=(
-            (F.col("scene_date_dt") == daily_weather["date"])
-        ),
-        how="left",
-    ).drop("date", "scene_date_dt")
+    enriched = (
+        satellite_df.withColumn("scene_date_dt", F.to_date("scene_date"))
+        .join(
+            daily_weather,
+            on=((F.col("scene_date_dt") == daily_weather["date"])),
+            how="left",
+        )
+        .drop("date", "scene_date_dt")
+    )
 
     logger.info("T2 Weather enrichment done. Row count: %d", enriched.count())
     return enriched
 
 
 # ─── T3: Anomaly Flagging ─────────────────────────────────────────────────────
+
 
 def flag_ndvi_anomalies(
     df: DataFrame,
@@ -132,8 +135,7 @@ def flag_ndvi_anomalies(
 
     window_seconds = window_days * 86_400
     w = (
-        Window
-        .partitionBy(*pixel_id_cols)
+        Window.partitionBy(*pixel_id_cols)
         .orderBy("_ts")
         .rangeBetween(-window_seconds, 0)
     )
@@ -159,6 +161,7 @@ def flag_ndvi_anomalies(
 
 
 # ─── Convenience: run all three transformations ───────────────────────────────
+
 
 def run_all_transformations(
     satellite_df: DataFrame,
@@ -193,8 +196,16 @@ if __name__ == "__main__":
     ]
     weather_df = spark.createDataFrame(
         weather_data,
-        ["datetime", "temperature_2m", "precipitation", "shortwave_radiation",
-         "relative_humidity_2m", "lat", "lon", "location_name"],
+        [
+            "datetime",
+            "temperature_2m",
+            "precipitation",
+            "shortwave_radiation",
+            "relative_humidity_2m",
+            "lat",
+            "lon",
+            "location_name",
+        ],
     )
 
     result = run_all_transformations(sat_df, weather_df)

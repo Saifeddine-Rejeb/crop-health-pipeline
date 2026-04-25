@@ -28,8 +28,8 @@ COLLECTION = "sentinel-2-l2a"
 # Bounding boxes in EPSG:4326 (lon_min, lat_min, lon_max, lat_max)
 # Lower Mississippi delta study areas (converted from EPSG:5070 originals)
 DEFAULT_BBOXES = [
-    (-91.5, 32.5, -90.5, 33.0),   # AOI-1
-    (-90.8, 31.5, -90.0, 32.5),   # AOI-2
+    (-91.5, 32.5, -90.5, 33.0),  # AOI-1
+    (-90.8, 31.5, -90.0, 32.5),  # AOI-2
 ]
 
 
@@ -58,11 +58,17 @@ def query_stac(
     """
     lon_min, lat_min, lon_max, lat_max = bbox
     geometry = Feature(
-        geometry=Polygon([
-            [(lon_min, lat_min), (lon_max, lat_min),
-             (lon_max, lat_max), (lon_min, lat_max),
-             (lon_min, lat_min)]
-        ])
+        geometry=Polygon(
+            [
+                [
+                    (lon_min, lat_min),
+                    (lon_max, lat_min),
+                    (lon_max, lat_max),
+                    (lon_min, lat_max),
+                    (lon_min, lat_min),
+                ]
+            ]
+        )
     ).geometry
 
     all_features = []
@@ -91,7 +97,7 @@ def query_stac(
                 if attempt == max_retries:
                     logger.error("Max retries exceeded for bbox=%s page=%d", bbox, page)
                     raise
-                time.sleep(2 ** attempt)  # exponential back-off
+                time.sleep(2**attempt)  # exponential back-off
 
         data = resp.json()
         features = data.get("features", [])
@@ -111,16 +117,18 @@ def scenes_to_dataframe(features: list[dict]) -> pd.DataFrame:
     for f in features:
         props = f.get("properties", {})
         assets = f.get("assets", {})
-        rows.append({
-            "scene_id":     f["id"],
-            "tile":         f["id"].split("_")[1] if "_" in f["id"] else None,
-            "datetime":     props.get("datetime", "")[:10],
-            "cloud_cover":  props.get("eo:cloud_cover"),
-            "bbox":         str(f.get("bbox")),
-            "nir_href":     assets.get("nir", {}).get("href"),
-            "red_href":     assets.get("red", {}).get("href"),
-            "scl_href":     assets.get("scl", {}).get("href"),
-        })
+        rows.append(
+            {
+                "scene_id": f["id"],
+                "tile": f["id"].split("_")[1] if "_" in f["id"] else None,
+                "datetime": props.get("datetime", "")[:10],
+                "cloud_cover": props.get("eo:cloud_cover"),
+                "bbox": str(f.get("bbox")),
+                "nir_href": assets.get("nir", {}).get("href"),
+                "red_href": assets.get("red", {}).get("href"),
+                "scl_href": assets.get("scl", {}).get("href"),
+            }
+        )
     return pd.DataFrame(rows)
 
 

@@ -24,8 +24,8 @@ logging.basicConfig(
 )
 
 KAFKA_BOOTSTRAP = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
-TOPIC           = os.getenv("KAFKA_TOPIC", "crop-alerts")
-ALERTS_FILE     = os.getenv("ALERTS_FILE", "data/alerts.jsonl")
+TOPIC = os.getenv("KAFKA_TOPIC", "crop-alerts")
+ALERTS_FILE = os.getenv("ALERTS_FILE", "data/alerts.jsonl")
 
 _running = True
 
@@ -37,7 +37,7 @@ def handle_sigterm(*_):
 
 
 signal.signal(signal.SIGTERM, handle_sigterm)
-signal.signal(signal.SIGINT,  handle_sigterm)
+signal.signal(signal.SIGINT, handle_sigterm)
 
 
 def run_consumer(
@@ -52,12 +52,14 @@ def run_consumer(
     """
     Path(output_file).parent.mkdir(parents=True, exist_ok=True)
 
-    consumer = Consumer({
-        "bootstrap.servers": bootstrap,
-        "group.id":          group_id,
-        "auto.offset.reset": "earliest",
-        "enable.auto.commit": True,
-    })
+    consumer = Consumer(
+        {
+            "bootstrap.servers": bootstrap,
+            "group.id": group_id,
+            "auto.offset.reset": "earliest",
+            "enable.auto.commit": True,
+        }
+    )
     consumer.subscribe([topic])
     logger.info("Consumer subscribed to topic '%s'", topic)
 

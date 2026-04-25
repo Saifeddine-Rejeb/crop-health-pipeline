@@ -24,21 +24,29 @@ logging.basicConfig(
 )
 
 KAFKA_BOOTSTRAP = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
-TOPIC           = os.getenv("KAFKA_TOPIC", "crop-alerts")
+TOPIC = os.getenv("KAFKA_TOPIC", "crop-alerts")
 
 
 def ensure_topic(bootstrap: str, topic: str, num_partitions: int = 1) -> None:
     """Create Kafka topic if it doesn't exist. Retries on broker not ready."""
     for attempt in range(1, 6):
         try:
-            admin = AdminClient({
-                "bootstrap.servers": bootstrap,
-                "socket.timeout.ms": 10000,
-                "metadata.request.timeout.ms": 10000,
-            })
+            admin = AdminClient(
+                {
+                    "bootstrap.servers": bootstrap,
+                    "socket.timeout.ms": 10000,
+                    "metadata.request.timeout.ms": 10000,
+                }
+            )
             existing = admin.list_topics(timeout=10).topics
             if topic not in existing:
-                admin.create_topics([NewTopic(topic, num_partitions=num_partitions, replication_factor=1)])
+                admin.create_topics(
+                    [
+                        NewTopic(
+                            topic, num_partitions=num_partitions, replication_factor=1
+                        )
+                    ]
+                )
                 logger.info("Created Kafka topic: %s", topic)
             else:
                 logger.info("Kafka topic already exists: %s", topic)
@@ -88,16 +96,16 @@ def publish_anomalies(
 
     for _, row in anomalies.iterrows():
         message = {
-            "event_type":        "NDVI_ANOMALY",
-            "timestamp":         datetime.utcnow().isoformat() + "Z",
-            "scene_date":        str(row.get("scene_date", "")),
-            "lat":               float(row.get("lat", 0)),
-            "lon":               float(row.get("lon", 0)),
-            "ndvi":              float(row.get("ndvi", 0)),
+            "event_type": "NDVI_ANOMALY",
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "scene_date": str(row.get("scene_date", "")),
+            "lat": float(row.get("lat", 0)),
+            "lon": float(row.get("lon", 0)),
+            "ndvi": float(row.get("ndvi", 0)),
             "rolling_mean_ndvi": float(row.get("rolling_mean_ndvi", 0)),
-            "ndvi_drop_pct":     float(row.get("ndvi_drop_pct", 0)),
-            "ndvi_class":        str(row.get("ndvi_class", "")),
-            "aoi":               str(row.get("aoi_bbox", "")),
+            "ndvi_drop_pct": float(row.get("ndvi_drop_pct", 0)),
+            "ndvi_class": str(row.get("ndvi_class", "")),
+            "aoi": str(row.get("aoi_bbox", "")),
         }
 
         producer.produce(

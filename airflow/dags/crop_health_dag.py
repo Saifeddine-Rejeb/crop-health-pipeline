@@ -41,12 +41,12 @@ sys.path.insert(0, "/opt/airflow")
 logger = logging.getLogger(__name__)
 
 DEFAULT_ARGS = {
-    "owner":            "data-engineering",
-    "depends_on_past":  False,
+    "owner": "data-engineering",
+    "depends_on_past": False,
     "email_on_failure": False,
-    "email_on_retry":   False,
-    "retries":          2,
-    "retry_delay":      timedelta(minutes=5),
+    "email_on_retry": False,
+    "retries": 2,
+    "retry_delay": timedelta(minutes=5),
 }
 
 DATA_DIR = os.getenv("DATA_DIR", "/opt/airflow/data")
@@ -55,14 +55,17 @@ DATA_DIR = os.getenv("DATA_DIR", "/opt/airflow/data")
 def _db_headers() -> dict:
     return {"Authorization": f"Bearer {os.environ['DATABRICKS_TOKEN']}"}
 
+
 def _db_host() -> str:
     return os.environ["DATABRICKS_HOST"].rstrip("/")
+
 
 def _volume_path() -> str:
     return os.environ["DATABRICKS_VOLUME_PATH"]
 
 
 # ─── Task 1: Ingest Sentinel-2 locally (validates API + produces local parquet) ─
+
 
 def task_ingest_sentinel2(**context) -> str:
     from ingestion.sentinel2_ingestor import ingest_sentinel2
@@ -76,6 +79,7 @@ def task_ingest_sentinel2(**context) -> str:
 
 # ─── Task 2: Ingest weather locally ──────────────────────────────────────────
 
+
 def task_ingest_weather(**context) -> str:
     from ingestion.weather_ingestor import ingest_weather
 
@@ -88,6 +92,7 @@ def task_ingest_weather(**context) -> str:
 
 # ─── Task 3: Trigger Databricks job ──────────────────────────────────────────
 
+
 def task_trigger_databricks(**context) -> str:
     """
     Triggers the Databricks job which:
@@ -97,9 +102,9 @@ def task_trigger_databricks(**context) -> str:
 
     Polls every 20s until the job finishes (max 30 min).
     """
-    host    = _db_host()
+    host = _db_host()
     headers = _db_headers()
-    job_id  = int(os.environ["DATABRICKS_JOB_ID"])
+    job_id = int(os.environ["DATABRICKS_JOB_ID"])
 
     # Trigger
     resp = requests.post(
@@ -124,9 +129,9 @@ def task_trigger_databricks(**context) -> str:
             timeout=30,
         )
         r.raise_for_status()
-        state      = r.json()["state"]
+        state = r.json()["state"]
         life_cycle = state["life_cycle_state"]
-        result     = state.get("result_state", "—")
+        result = state.get("result_state", "—")
         logger.info("run_id=%s  state=%s  result=%s", run_id, life_cycle, result)
 
         if life_cycle == "TERMINATED":
@@ -146,11 +151,10 @@ def task_trigger_databricks(**context) -> str:
     return f"{_volume_path()}/processed.parquet"
 
 
-
 # ─── Task 4: Download processed parquet from Volume ──────────────────────────
 def task_download_from_databricks(**context) -> str:
-    host      = _db_host()
-    headers   = _db_headers()
+    host = _db_host()
+    headers = _db_headers()
     volume_dir = context["ti"].xcom_pull(task_ids="trigger_databricks_job")
     local_out = f"{DATA_DIR}/processed.parquet"
 
@@ -169,9 +173,9 @@ def task_download_from_databricks(**context) -> str:
     logger.info("Contents: %s", [f["name"] for f in contents])
 
     part_files = [
-        f for f in contents
-        if f["name"].endswith(".parquet")
-        and not f["name"].startswith("_")
+        f
+        for f in contents
+        if f["name"].endswith(".parquet") and not f["name"].startswith("_")
     ]
 
     if not part_files:
@@ -199,9 +203,11 @@ def task_download_from_databricks(**context) -> str:
             logger.warning("Attempt %d failed: %s", attempt, exc)
             if attempt == 3:
                 raise RuntimeError("Failed to download after 3 attempts")
-            time.sleep(2 ** attempt)
+            time.sleep(2**attempt)
+
 
 # ─── Task 5: Publish anomalies → Kafka ───────────────────────────────────────
+
 
 def task_publish_to_kafka(**context) -> int:
     from streaming.kafka_producer import publish_anomalies
@@ -213,6 +219,7 @@ def task_publish_to_kafka(**context) -> int:
 
 
 # ─── Task 6: Update dashboard snapshot ───────────────────────────────────────
+
 
 def task_update_dashboard(**context) -> None:
     processed_path = context["ti"].xcom_pull(task_ids="download_from_databricks")
@@ -226,7 +233,7 @@ def task_update_dashboard(**context) -> None:
 
     meta = {
         "last_updated": datetime.now(timezone.utc).isoformat(),
-        "dag_run_id":   context["run_id"],
+        "dag_run_id": context["run_id"],
     }
     Path(f"{DATA_DIR}/meta.json").write_text(json.dumps(meta))
     logger.info("Dashboard meta written: %s", meta)

@@ -25,7 +25,7 @@ OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
 # Centroids of the study AOIs  (lat, lon)
 DEFAULT_LOCATIONS = [
     {"name": "AOI-1", "lat": 32.75, "lon": -91.0},
-    {"name": "AOI-2", "lat": 32.0,  "lon": -90.4},
+    {"name": "AOI-2", "lat": 32.0, "lon": -90.4},
 ]
 
 HOURLY_VARS = [
@@ -49,12 +49,12 @@ def fetch_weather(
     Retries on transient failures (retry on critical step ✅).
     """
     params = {
-        "latitude":  lat,
+        "latitude": lat,
         "longitude": lon,
-        "hourly":    ",".join(HOURLY_VARS),
+        "hourly": ",".join(HOURLY_VARS),
         "start_date": start_date,
-        "end_date":   end_date,
-        "timezone":   "UTC",
+        "end_date": end_date,
+        "timezone": "UTC",
     }
 
     for attempt in range(1, max_retries + 1):
@@ -70,7 +70,7 @@ def fetch_weather(
             if attempt == max_retries:
                 logger.error("Max retries exceeded for lat=%s lon=%s", lat, lon)
                 raise
-            time.sleep(2 ** attempt)
+            time.sleep(2**attempt)
 
     data = resp.json()
     hourly = data.get("hourly", {})
@@ -94,7 +94,7 @@ def ingest_weather(
         output_path (for XCom passing in Airflow)
     """
     locations = locations or DEFAULT_LOCATIONS
-    end_date   = datetime.utcnow().strftime("%Y-%m-%d")
+    end_date = datetime.utcnow().strftime("%Y-%m-%d")
     start_date = (datetime.utcnow() - timedelta(days=days_back)).strftime("%Y-%m-%d")
 
     all_dfs = []
