@@ -1,0 +1,7 @@
+streamlit==1.32.0
+plotly==5.20.0
+pandas==2.2.1
+pyarrow==15.0.2
+confluent-kafka==2.3.0
+scipy==1.11.4
+statsmodels==0.14.1
