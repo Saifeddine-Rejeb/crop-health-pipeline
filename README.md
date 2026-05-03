@@ -222,4 +222,3 @@ Daily means/sums aggregated from hourly Open-Meteo data and joined to satellite 
 | Airflow                    | http://localhost:8080 | admin / admin |
 | Streamlit dashboard        | http://localhost:8501 | public        |
 | Kafka UI                   | http://localhost:8081 | public        |
-| Streamlit Cloud (deployed) | _add your URL here_   | public        |
