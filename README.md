@@ -11,6 +11,7 @@
 End-to-end Data Engineering pipeline that ingests Sentinel-2 satellite imagery
 and weather data, computes NDVI vegetation indices, detects crop stress anomalies,
 and serves a live dashboard.
+
 ![Screenshot 1](docs/ss2.png) ![Screenshot 2](docs/ss1.png)
 
 ## Recent Updates
