@@ -11,6 +11,7 @@
 End-to-end Data Engineering pipeline that ingests Sentinel-2 satellite imagery
 and weather data, computes NDVI vegetation indices, detects crop stress anomalies,
 and serves a live dashboard.
+![Screenshot 1](docs/ss2.png) ![Screenshot 2](docs/ss1.png)
 
 ## Recent Updates
 
@@ -22,61 +23,7 @@ and serves a live dashboard.
 
 ## Architecture Diagram
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                        INGESTION LAYER (Airflow DAG · 06:00 UTC daily)      │
-│                                                                             │
-│  ┌──────────────────────┐          ┌──────────────────────┐                │
-│  │  Sentinel-2 STAC API │          │   Open-Meteo API     │                │
-│  │  (Element-84, free)  │          │  (weather, free)     │                │
-│  │  sentinel2_ingestor  │          │  weather_ingestor    │                │
-│  └──────────┬───────────┘          └──────────┬───────────┘                │
-│             │  scene manifest.parquet          │  weather.parquet           │
-└─────────────┼──────────────────────────────────┼───────────────────────────┘
-              │                                  │
-              └──────────────┬───────────────────┘
-                             ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    TRANSFORMATION LAYER (PySpark · Databricks Community)    │
-│                                                                             │
-│   T1: NDVI Calculation      (NIR-Red)/(NIR+Red) per pixel per date         │
-│   T2: Weather Enrichment    Join weather by AOI + date                      │
-│   T3: Anomaly Flagging      30-day rolling NDVI · flag drop > 20%          │
-│                                                                             │
-│   Output → Delta Lake on DBFS  /FileStore/crop_health/processed/            │
-└──────────────────────────────────┬──────────────────────────────────────────┘
-                                   │  processed.parquet
-              ┌────────────────────┴────────────────────┐
-              │                                         │
-              ▼                                         ▼
-┌─────────────────────────┐              ┌──────────────────────────────────┐
-│   STREAMING LAYER       │              │   STORAGE LAYER                  │
-│                         │              │                                  │
-│  kafka_producer.py      │              │  Delta Lake (Databricks DBFS)    │
-│  → topic: crop-alerts   │              │  ├── /CDL_samples/               │
-│                         │              │  ├── /s2_sampled/                │
-│  kafka_consumer.py      │              │  └── /crop_health/processed/     │
-│  → alerts.jsonl         │              │                                  │
-│                         │              │  Local (Docker volume)           │
-│  Kafka UI :8081         │              │  └── data/*.parquet              │
-└─────────────┬───────────┘              └──────────────────────────────────┘
-              │
-              ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│              VISUALISATION LAYER (Streamlit · :8501)                        │
-│                                                                             │
-│  Tab 1: NDVI Trend        Daily AOI trend + rolling mean + anomaly overlay  │
-│  Tab 2: Weather           Daily temp / precip / NDVI relationships           │
-│  Tab 3: Kafka Alerts      Real-time anomaly table from alerts.jsonl         │
-│  Tab 4: Spatial View      Raw pixel map (lat/lon) coloured by NDVI          │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-ORCHESTRATION: Apache Airflow (Docker · :8080)
-  DAG: crop_health_pipeline  ·  schedule: 0 6 * * *
-  ingest_sentinel2 ──┐
-                      ├──▶ run_transformations ──▶ publish_to_kafka ──▶ update_dashboard_data
-  ingest_weather   ──┘
-```
+[![Architecture Diagram](docs/architecture_diagram.png)](docs/architecture_diagram.png)
 
 ---
 
